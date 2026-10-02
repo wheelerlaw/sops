@@ -2,27 +2,33 @@ package main
 
 import "fmt"
 
-// https://github.com/urfave/cli/blob/v1-maint/autocomplete/zsh_autocomplete
+// Based on https://github.com/urfave/cli/blob/v1-maint/autocomplete/zsh_autocomplete,
+// which only completes files when sops prints no suggestions at all. sops
+// almost always prints flags or subcommands, so files are offered alongside
+// subcommands instead.
 var Zshcompletion = `#compdef %s
 
 _cli_zsh_autocomplete() {
 
   local -a opts
-  local cur
-  cur=${words[-1]}
+  local cur prev ret=1
+  cur=${words[CURRENT]}
+  prev=${words[CURRENT-1]}
   if [[ "$cur" == "-"* ]]; then
-    opts=("${(@f)$(_CLI_ZSH_AUTOCOMPLETE_HACK=1 ${words[@]:0:#words[@]-1} ${cur} --generate-bash-completion)}")
-  else
-    opts=("${(@f)$(_CLI_ZSH_AUTOCOMPLETE_HACK=1 ${words[@]:0:#words[@]-1} --generate-bash-completion)}")
+    opts=("${(@f)$(_CLI_ZSH_AUTOCOMPLETE_HACK=1 ${words[1,CURRENT-1]} ${cur} --generate-bash-completion)}")
+    [[ "${opts[1]}" != "" ]] && _describe 'values' opts && ret=0
+    return $ret
   fi
 
-  if [[ "${opts[1]}" != "" ]]; then
-    _describe 'values' opts
-  else
-    _files
+  # After a flag, sops suggests more flags rather than flag values or files,
+  # so only ask it for subcommands when the previous word is not a flag.
+  if [[ "$prev" != "-"* ]]; then
+    opts=("${(@f)$(_CLI_ZSH_AUTOCOMPLETE_HACK=1 ${words[1,CURRENT-1]} --generate-bash-completion)}")
+    [[ "${opts[1]}" != "" ]] && _describe 'values' opts && ret=0
   fi
 
-  return
+  _files && ret=0
+  return $ret
 }
 
 compdef _cli_zsh_autocomplete %s
