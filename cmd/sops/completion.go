@@ -34,17 +34,20 @@ _cli_zsh_autocomplete() {
 compdef _cli_zsh_autocomplete %s
 `
 
-// https://github.com/urfave/cli/blob/v1-maint/autocomplete/bash_autocomplete
+// Based on https://github.com/urfave/cli/blob/v1-maint/autocomplete/bash_autocomplete
 var Bashcompletion = `#! /bin/bash
 
 _cli_bash_autocomplete() {
   if [[ "${COMP_WORDS[0]}" != "source" ]]; then
-    local cur opts base
+    local cur prev opts base
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    # After a flag, sops suggests more flags rather than flag values or files,
+    # so leave opts empty there and let "-o default" complete file names.
     if [[ "$cur" == "-"* ]]; then
       opts=$( ${COMP_WORDS[@]:0:$COMP_CWORD} ${cur} --generate-bash-completion )
-    else
+    elif [[ "$prev" != "-"* ]]; then
       opts=$( ${COMP_WORDS[@]:0:$COMP_CWORD} --generate-bash-completion )
     fi
     COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
